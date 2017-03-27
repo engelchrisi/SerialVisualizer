@@ -1,8 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using LiveCharts.Geared;
+using LiveCharts.Wpf;
 using static System.Int64;
+using CartesianChart = LiveCharts.WinForms.CartesianChart;
 
 // ReSharper disable InconsistentNaming
 
@@ -18,8 +25,6 @@ namespace SerialVisualizer
             rawSensorValues = new GearedValues<long>().WithQuality(Quality.High);
             songAvgValues = new GearedValues<long>().WithQuality(Quality.High);
             ModeValues = new GearedValues<long>().WithQuality(Quality.Low);
-
-            InitializeSerial();
         }
 
 
@@ -40,17 +45,33 @@ namespace SerialVisualizer
 
         public double Count { get; set; }
 
-        public void Start()
+        public bool Start(string COMPort)
         {
-            _mySerialPort.Open();
-            IsReading = true;
+            try
+            {
+                InitializeSerial(COMPort);
+                _mySerialPort.Open();
+                IsReading = true;
+            }
+            catch (IOException)
+            {
+            }
 
+            return IsReading;
         }
 
         public void Stop()
         {
             IsReading = false;
-            _mySerialPort.Close();
+            try
+            {
+                _mySerialPort?.Close();
+
+            }
+            catch (IOException)
+            {
+                //throw;
+            }
         }
 
         public void Pause()
@@ -71,11 +92,11 @@ namespace SerialVisualizer
 
         private SerialPort _mySerialPort;
 
-        private void InitializeSerial()
+        private void InitializeSerial(string comPort)
         {
-            _mySerialPort = new SerialPort("COM14") // "COM8")
+            _mySerialPort = new SerialPort(comPort)
             {
-                BaudRate = 38400, //,115200
+                BaudRate = 38400,
                 DataBits = 8,
                 Parity = Parity.None,
                 StopBits = StopBits.One,
@@ -101,7 +122,9 @@ namespace SerialVisualizer
         private readonly List<long> noiceOffsetValueBuf = new List<long>(_capacity);
         private readonly List<long> rawSensorValueBuf = new List<long>(_capacity);
         private readonly List<long> songAvgValueBuf = new List<long>(_capacity);
-        private string _lastFragment= "";
+        private string _lastFragment = "";
+        private string _animationTitle;
+        public CartesianChart CartesianChart { get; set; }
 
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
@@ -127,12 +150,24 @@ namespace SerialVisualizer
                 _lastFragment = "";
             }
 
+            const string suffixTime = "| ";
+
             for (int index = 0; index < noOfLines; index++)
             {
                 var line = lines[index];
+                var pos = line.IndexOf(suffixTime, StringComparison.Ordinal);
+                if (pos >= 0)
+                    line = line.Substring(pos + suffixTime.Length);
 
                 if (line.StartsWith(COMMENT_PREFIX))
                     continue;
+
+                const string animationPrefix = @"=== ";
+                if (line.StartsWith(animationPrefix))
+                {
+                    _animationTitle = line.Substring(animationPrefix.Length);
+                    _animationTitle = _animationTitle.Replace(@" ===", "");
+                }
 
                 var fragments = line.Split(SEP_TIME_VALUE);
                 try
@@ -148,7 +183,8 @@ namespace SerialVisualizer
                             AddValue(fragments[0], modeValueBuf, ModeValues);
                             AddValue(fragments[1], noiceOffsetValueBuf, NoiseOffsetValues);
                             AddValue(fragments[2], sensorValueBuf, SensorValues);
-                            AddValue(fragments[3], rawSensorValueBuf, rawSensorValues);
+                            AddValue(fragments[3], rawSensorValueBuf, rawSensorValues, _animationTitle);
+                            _animationTitle = null;
                             AddValue(fragments[4], maxSensorValueBuf, MaxSensorValues);
                             AddValue(fragments[5], songAvgValueBuf, songAvgValues);
                             break;
@@ -179,18 +215,71 @@ namespace SerialVisualizer
 
         }
 
-        private static void AddValue(string longFrag, List<long> sensorValueBuf, GearedValues<long> sensorValues)
+        private void AddAnimationTitle(int xValue, string animationTitle)
         {
-            long value = Parse(longFrag);
-
-            if (sensorValueBuf.Count < _capacity)
+            if (CartesianChart.InvokeRequired)
             {
-                sensorValueBuf.Add(value);
+                CartesianChart.Invoke(new Action<int, string>(AddAnimationTitle), xValue, animationTitle);
+                return;
             }
-            else
+            var axis = CartesianChart.AxisX[0];
+
+            if (axis.Sections.Count > 0)
             {
-                sensorValues.AddRange(sensorValueBuf);
-                sensorValueBuf.Clear();
+                var previousSection = axis.Sections.Last();
+                previousSection.SectionWidth = xValue - previousSection.Value;
+
+                var previousElem= CartesianChart.VisualElements.Last();
+                previousElem.X = previousSection.Value + previousSection.SectionWidth/2;
+            }
+            var color = ((axis.Sections.Count & 1) != 0)? Colors.LightSkyBlue : Colors.Aqua;
+            axis.Sections.Add(
+                    new AxisSection
+                    {
+                        Label = animationTitle,
+                        Value = xValue,
+                        SectionWidth = 200,
+                        Fill = new SolidColorBrush
+                        {
+                            Color = color,
+                            Opacity = 0.4
+                        }
+                    });
+
+            CartesianChart.VisualElements.Add(new VisualElement
+            {
+                X = xValue + 100,
+                Y = 150,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                UIElement = new TextBlock //notice this property must be a wpf control
+                {
+                    Text = animationTitle,
+                    //FontWeight = FontWeights.Bold,
+                    Background = new SolidColorBrush(color),
+                    FontSize = 10,
+                    //Opacity = 0.6
+                }
+            });
+        }
+
+        private void AddValue(string longFrag, ICollection<long> valueBuffer, GearedValues<long> sensorValues, string animationTitle= null)
+        {
+            var value = Parse(longFrag);
+
+            if (valueBuffer.Count >= _capacity)
+            {
+                sensorValues.AddRange(valueBuffer);
+                valueBuffer.Clear();
+            }
+
+            valueBuffer.Add(value);
+            if (animationTitle != null)
+            {
+                sensorValues.AddRange(valueBuffer);
+                valueBuffer.Clear();
+
+                AddAnimationTitle(sensorValues.Count, animationTitle);
             }
         }
     }

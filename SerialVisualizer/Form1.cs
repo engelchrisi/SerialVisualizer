@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using System.Windows.Media;
 using LiveCharts;
 using LiveCharts.Geared;
+using SerialVisualizer.Properties;
 
 // ReSharper disable All
 
@@ -15,6 +16,12 @@ namespace SerialVisualizer
         public Form1()
         {
             InitializeComponent();
+
+            for (int i = 1; i < 25; ++i)
+            {
+                comboCOM.Items.Add("COM" + i);
+            }
+            comboCOM.SelectedItem = Settings.Default.COMPort;
 
             var strokeDashArray= DoubleCollection.Parse("4,2");
             var strokeDashArray2 = DoubleCollection.Parse("2,2");
@@ -112,13 +119,18 @@ namespace SerialVisualizer
 
         private void buttonStart_Click(object sender, EventArgs e)
         {
-            buttonStart.Enabled = false;
-            buttonStop.Enabled = true;
-            buttonPause.Enabled = true;
+
+            cartesianChart1.AxisX[0].Sections.Clear();
+            cartesianChart1.VisualElements.Clear();
 
             _viewModel.Clear();
-            _viewModel.Start();
-
+            _viewModel.CartesianChart= cartesianChart1;
+            if (_viewModel.Start((string) comboCOM.SelectedItem))
+            {
+                buttonStart.Enabled = false;
+                buttonStop.Enabled = true;
+                buttonPause.Enabled = true;
+            }
         }
 
         private void buttonStop_Click(object sender, EventArgs e)
@@ -141,5 +153,10 @@ namespace SerialVisualizer
 
         }
 
+        private void comboCOM_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            Settings.Default.COMPort= (string) comboCOM.SelectedItem;
+
+        }
     }
 }

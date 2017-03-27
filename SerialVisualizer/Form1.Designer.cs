@@ -32,11 +32,12 @@
             this.buttonPause = new System.Windows.Forms.Button();
             this.buttonStop = new System.Windows.Forms.Button();
             this.cartesianChart1 = new LiveCharts.WinForms.CartesianChart();
+            this.comboCOM = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // buttonStart
             // 
-            this.buttonStart.Location = new System.Drawing.Point(100, 21);
+            this.buttonStart.Location = new System.Drawing.Point(254, 23);
             this.buttonStart.Name = "buttonStart";
             this.buttonStart.Size = new System.Drawing.Size(75, 23);
             this.buttonStart.TabIndex = 0;
@@ -47,7 +48,7 @@
             // buttonPause
             // 
             this.buttonPause.Enabled = false;
-            this.buttonPause.Location = new System.Drawing.Point(214, 21);
+            this.buttonPause.Location = new System.Drawing.Point(368, 23);
             this.buttonPause.Name = "buttonPause";
             this.buttonPause.Size = new System.Drawing.Size(75, 23);
             this.buttonPause.TabIndex = 1;
@@ -58,7 +59,7 @@
             // buttonStop
             // 
             this.buttonStop.Enabled = false;
-            this.buttonStop.Location = new System.Drawing.Point(333, 21);
+            this.buttonStop.Location = new System.Drawing.Point(482, 23);
             this.buttonStop.Name = "buttonStop";
             this.buttonStop.Size = new System.Drawing.Size(75, 23);
             this.buttonStop.TabIndex = 2;
@@ -83,11 +84,22 @@
             this.cartesianChart1.TabIndex = 3;
             this.cartesianChart1.Text = "chart1";
             // 
+            // comboCOM
+            // 
+            this.comboCOM.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboCOM.FormattingEnabled = true;
+            this.comboCOM.Location = new System.Drawing.Point(94, 22);
+            this.comboCOM.Name = "comboCOM";
+            this.comboCOM.Size = new System.Drawing.Size(121, 24);
+            this.comboCOM.TabIndex = 4;
+            this.comboCOM.SelectionChangeCommitted += new System.EventHandler(this.comboCOM_SelectionChangeCommitted);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(661, 659);
+            this.Controls.Add(this.comboCOM);
             this.Controls.Add(this.cartesianChart1);
             this.Controls.Add(this.buttonStop);
             this.Controls.Add(this.buttonPause);
@@ -106,6 +118,7 @@
         private System.Windows.Forms.Button buttonPause;
         private System.Windows.Forms.Button buttonStop;
         private LiveCharts.WinForms.CartesianChart cartesianChart1;
+        private System.Windows.Forms.ComboBox comboCOM;
     }
 }
 
