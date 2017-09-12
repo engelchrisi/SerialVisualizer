@@ -114,6 +114,9 @@ namespace SerialVisualizer
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             buttonStop_Click(sender, e);
+
+            var settings = Settings.Default;
+            settings.Save();
         }
 
 
